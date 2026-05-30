@@ -102,6 +102,20 @@ class FinanceEngine(HermesProjectCore):
             data.get("file_path", "manual_entry"),
         ]
 
+        # ── 前置查重：invoice_number 已存在则跳过，不执行 UPSERT ────
+        dup = self.query_d1(
+            "SELECT invoice_number, created_at FROM invoices WHERE invoice_number = ?",
+            [data.get("invoice_number")],
+        )
+        dup_rows = dup.get("result", [{}])[0].get("results", [])
+        if dup_rows:
+            print(
+                f"⚠️  重复发票，已跳过入库: "
+                f"{data.get('invoice_number')} "
+                f"（首次入库于 {dup_rows[0].get('created_at')}）"
+            )
+            return
+
         res = self.query_d1(sql, params)
         if res.get("success"):
             # 过滤掉 raw_text 和非基本类型字段，以满足 ChromaDB metadata 要求
