@@ -90,6 +90,14 @@ if __name__ == "__main__":
         file_path = data.pop("file_path_src", data.get("file_path", ""))
         DocumentEngine().process(file_path, data)
 
+    elif cmd == "process":
+        # 自动识别文档类型（发票 / 普通文档），路由到对应引擎
+        if len(sys.argv) < 3:
+            print("Usage: project_manager.py process <file_path>")
+            sys.exit(1)
+        from auto_router import AutoRouter
+        AutoRouter().process(sys.argv[2])
+
     elif cmd == "report":
         # 统计报表：支持 invoices / documents 两张表
         table = sys.argv[2] if len(sys.argv) > 2 else "documents"
