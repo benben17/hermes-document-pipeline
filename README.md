@@ -1,12 +1,12 @@
 # Hermes Document Pipeline
 
-Production-ready document + invoice processing toolkit built around a single CLI, Cloudflare D1 for structured data, and ChromaDB for semantic retrieval.
+A production-ready CLI pipeline for document and invoice ingestion, health checks, and semantic retrieval.
 
 [中文文档](./README.zh-CN.md)
 
 ## Why this project exists
 
-Hermes Agent is excellent at orchestration, but business workflows need their own stable runtime and repeatable tooling. This repository packages that layer as a small Python project with a simple shell entrypoint.
+Hermes Agent is excellent at orchestration, but business workflows need their own stable runtime and repeatable tooling. This repository packages that layer as a focused Python project with a simple shell entrypoint.
 
 It is designed so that a new user can:
 
@@ -28,13 +28,9 @@ It is designed so that a new user can:
   - Upsert metadata into D1
   - Index extracted text into ChromaDB
 - **Operational health checks**
-  - Verify Python runtime, imports, D1, ChromaDB, news cron wrappers, and Hermes delivery path
+  - Verify Python runtime, imports, D1, ChromaDB, and CLI entrypoints
   - Export JSON + Markdown reports
   - Auto-fix common runtime drift with `doctor --fix`
-- **News delivery utilities**
-  - Reuters summary push
-  - Bloomberg summary push
-  - Source-enhanced output with publisher/domain/feed provenance in markdown and Chroma metadata
 
 ## Project highlights
 
@@ -75,7 +71,7 @@ Fill in at least:
 - `CLOUDFLARE_FINANCE_D1_DATABASE_ID`
 - `CHROMA_HOST`
 - `CHROMA_PORT`
-- `HERMES_NEWS_TARGET` if you want news or doctor probes delivered via Hermes
+- `HERMES_NEWS_TARGET` if you want doctor probes delivered via Hermes
 
 ### 4) Confirm the CLI works
 
@@ -168,10 +164,8 @@ Operator / CLI / Hermes
         ▼
    ./project-tool
         │
-        ├── project_manager.py
-        ├── project_doctor.py
-        ├── reuters_push.py
-        └── bloomberg_fetch_and_notify.py
+        ├── project_manager.py  -> document / invoice ingestion
+        └── project_doctor.py   -> health checks / reports
                 │
                 ├── Cloudflare D1   (structured records)
                 ├── ChromaDB        (semantic retrieval)
@@ -203,10 +197,7 @@ Operator / CLI / Hermes
 ├── invoice_engine.py
 ├── doc_engine.py
 ├── pdf_engine.py
-├── reuters_fetcher.py
-├── reuters_push.py
-├── bloomberg_fetch_and_notify.py
-└── bloomberg_rss_fetch.py
+└── project_manager.py
 ```
 
 ## Configuration model
@@ -230,9 +221,6 @@ Important variables:
 - `HERMES_NEWS_TARGET`
 - `HERMES_PROJECT_REPORT_DIR`
 - `HERMES_PROJECT_DOCUMENT_ARCHIVE_DIR`
-- `REUTERS_OUTPUT_FILE`
-- `BLOOMBERG_OUTPUT_FILE`
-- `BLOOMBERG_RSS_OUTPUT_FILE`
 - `HERMES_CRON_JOBS_FILE`
 - `HERMES_PROJECT_TOOL_PATH`
 - `FIRECRAWL_API_KEY`
@@ -246,7 +234,6 @@ Important variables:
 - ChromaDB connectivity and expected collections
 - Firecrawl key presence / search probe
 - Hermes delivery target availability
-- news cron governance and wrapper expectations
 
 Reports are written to:
 
@@ -311,4 +298,3 @@ See:
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
-- [docs/fenchuan-monitoring.md](./docs/fenchuan-monitoring.md)

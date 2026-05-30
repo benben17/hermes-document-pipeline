@@ -29,14 +29,17 @@ PROJECT_SCRIPTS = [
     PROJECT_ROOT / "invoice_engine.py",
     PROJECT_ROOT / "doc_engine.py",
     PROJECT_ROOT / "core_engine.py",
+    PROJECT_ROOT / "pdf_engine.py",
+    PROJECT_ROOT / "project_doctor.py",
+]
+OPTIONAL_NEWS_SCRIPTS = [
     PROJECT_ROOT / "reuters_fetcher.py",
     PROJECT_ROOT / "reuters_push.py",
     PROJECT_ROOT / "bloomberg_fetch_and_notify.py",
-    PROJECT_ROOT / "pdf_engine.py",
     PROJECT_ROOT / "bloomberg_rss_fetch.py",
-    PROJECT_ROOT / "project_doctor.py",
+    PROJECT_ROOT / "news_sources.py",
 ]
-WRAPPERS = {
+NEWS_WRAPPERS = {
     Path(HERMES_HOME / "scripts" / "reuters_push_wrapper.sh"): f"#!/bin/bash\nset -euo pipefail\ncd {PROJECT_ROOT}\nexec {VENV_PY} {PROJECT_ROOT / 'reuters_push.py'}\n",
     Path(HERMES_HOME / "scripts" / "bloomberg_push_wrapper.sh"): f"#!/bin/bash\nset -euo pipefail\ncd {PROJECT_ROOT}\nexec {VENV_PY} {PROJECT_ROOT / 'bloomberg_fetch_and_notify.py'}\n",
 }
@@ -97,6 +100,10 @@ EXPECTED_NEWS_CRON = [
     },
 ]
 LEGACY_NEWS_CRON_NAMES = ["bloomberg_morning_briefing"]
+
+
+def _news_monitoring_enabled() -> bool:
+    return any(path.exists() for path in OPTIONAL_NEWS_SCRIPTS)
 
 
 def _run(cmd, timeout=120, check=False):
@@ -333,14 +340,26 @@ def check_entrypoints(require_wrappers: bool = True):
         script_details[str(path)] = {"exists": exists, "shebang": shebang, "executable": exec_ok}
         scripts_ok = scripts_ok and ok
 
+    optional_news_details = {}
+    for path in OPTIONAL_NEWS_SCRIPTS:
+        exists = path.exists()
+        optional_news_details[str(path)] = {
+            "exists": exists,
+            "tracked_as_optional": True,
+        }
+
     wrapper_details = {}
     wrappers_ok = True
-    for path, expected in WRAPPERS.items():
-        exists = path.exists()
-        content_ok = exists and _read_text(path) == expected
-        exec_ok = _is_executable(path)
-        wrapper_details[str(path)] = {"exists": exists, "content_ok": content_ok, "executable": exec_ok}
-        wrappers_ok = wrappers_ok and exists and content_ok and exec_ok
+    if _news_monitoring_enabled():
+        for path, expected in NEWS_WRAPPERS.items():
+            exists = path.exists()
+            content_ok = exists and _read_text(path) == expected
+            exec_ok = _is_executable(path)
+            wrapper_details[str(path)] = {"exists": exists, "content_ok": content_ok, "executable": exec_ok}
+            wrappers_ok = wrappers_ok and exists and content_ok and exec_ok
+    else:
+        wrapper_details = {str(path): {"skipped": True, "reason": "news_monitoring_not_in_repo"} for path in NEWS_WRAPPERS}
+        wrappers_ok = True
 
     project_tool_text = _read_text(PROJECT_TOOL) if PROJECT_TOOL.exists() else ""
     project_tool_details = {
@@ -363,6 +382,7 @@ def check_entrypoints(require_wrappers: bool = True):
         "ok": ok,
         "details": {
             "project_scripts": script_details,
+            "optional_news_scripts": optional_news_details,
             "wrappers": wrapper_details,
             "wrappers_required": require_wrappers,
             "project_tool": project_tool_details,
@@ -383,6 +403,15 @@ def _load_cron_jobs() -> List[dict]:
 def check_news_cron():
     result = {"name": "News Cron", "ok": False}
     try:
+        if not _news_monitoring_enabled():
+            result["ok"] = True
+            result["details"] = {
+                "skipped": True,
+                "reason": "news_monitoring_not_in_repo",
+                "cron_jobs_file": str(CRON_JOBS_FILE),
+            }
+            return result
+
         jobs = _load_cron_jobs()
         active_jobs = [j for j in jobs if j.get("enabled")]
         by_name = {j.get("name"): j for j in active_jobs}
@@ -485,13 +514,14 @@ def fix_entrypoints():
             _chmod_x(path)
             actions.append(f"chmod +x: {path}")
 
-    for path, expected in WRAPPERS.items():
-        if not path.exists() or _read_text(path) != expected:
-            _write_text(path, expected)
-            actions.append(f"rewrote wrapper: {path}")
-        if not _is_executable(path):
-            _chmod_x(path)
-            actions.append(f"chmod +x: {path}")
+    if _news_monitoring_enabled():
+        for path, expected in NEWS_WRAPPERS.items():
+            if not path.exists() or _read_text(path) != expected:
+                _write_text(path, expected)
+                actions.append(f"rewrote wrapper: {path}")
+            if not _is_executable(path):
+                _chmod_x(path)
+                actions.append(f"chmod +x: {path}")
 
     if PROJECT_TOOL.exists():
         text = _read_text(PROJECT_TOOL)
