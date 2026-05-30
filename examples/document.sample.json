@@ -1,0 +1,9 @@
+{
+  "title": "2026 Q2 Supplier Risk Review",
+  "company": "Acme Manufacturing Co., Ltd.",
+  "category": "risk-review",
+  "summary": "Quarterly supplier risk review covering logistics exposure, quality incidents, and mitigation actions.",
+  "tags": "supplier-risk,q2-2026,operations",
+  "file_path": "./examples/sample_document.txt",
+  "raw_text": "Supplier Risk Review\nCompany: Acme Manufacturing Co., Ltd.\nCategory: risk-review\nSummary: Logistics exposure is stable. One supplier has elevated quality variance. Mitigation includes dual-sourcing and weekly QA review."
+}

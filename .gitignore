@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local env and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime outputs
+archive/
+doctor-reports/
+reuters_latest.md
+bloomberg_latest.md
+bloomberg_rss_latest.md
+
+# Local project metadata / generated artifacts
+.project-root
+*.html
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,42 @@
+name: Python bootstrap & repo hygiene
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create virtualenv and install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare example env
+        run: cp .env.example .env
+
+      - name: Verify CLI help
+        run: ./project-tool --help
+
+      - name: Verify bootstrap doctor
+        run: |
+          . .venv/bin/activate
+          ./project-tool doctor --bootstrap --json
+
+      - name: Verify Python syntax
+        run: |
+          . .venv/bin/activate
+          python -m py_compile *.py

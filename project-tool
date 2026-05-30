@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")" && pwd)}"
+PY="${PROJECT_PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
+ENTRY="$PROJECT_ROOT/project_manager.py"
+DOCTOR_ENTRY="$PROJECT_ROOT/project_doctor.py"
+
+show_help() {
+  cat <<'EOF'
+Usage:
+  project-tool <command> [arg]
+
+Commands:
+  invoice [file.json|-]   Process invoice JSON from file or stdin
+  doc     [file.json|-]   Process document JSON from file or stdin
+  report  [table]         Generate report for invoices|documents (default: documents)
+  doctor  [--json|--no-qq-send|--fix|--bootstrap]  Health check, report export, and auto-repair for project runtime/integrations
+  help                    Show this help
+
+Examples:
+  ./project-tool invoice /tmp/invoice.json
+  cat /tmp/doc.json | ./project-tool doc -
+  ./project-tool report invoices
+  ./project-tool doctor --no-qq-send --json
+  ./project-tool doctor --bootstrap --json
+EOF
+}
+
+if [[ $# -lt 1 ]]; then
+  show_help
+  exit 1
+fi
+
+COMMAND="${1:-}"
+ARG="${2:-}"
+
+case "$COMMAND" in
+  help|-h|--help)
+    show_help
+    exit 0
+    ;;
+  invoice|doc)
+    if [[ "$ARG" == "-h" || "$ARG" == "--help" ]]; then
+      show_help
+      exit 0
+    fi
+    SOURCE="${ARG:--}"
+    if [[ "$SOURCE" == "-" ]]; then
+      cat | "$PY" "$ENTRY" "$COMMAND"
+    else
+      if [[ ! -f "$SOURCE" ]]; then
+        echo "❌ JSON file not found: $SOURCE" >&2
+        exit 2
+      fi
+      cat "$SOURCE" | "$PY" "$ENTRY" "$COMMAND"
+    fi
+    ;;
+  report)
+    if [[ "$ARG" == "-h" || "$ARG" == "--help" ]]; then
+      show_help
+      exit 0
+    fi
+    TABLE="${ARG:-documents}"
+    if [[ "$TABLE" != "invoices" && "$TABLE" != "documents" ]]; then
+      echo "❌ invalid report table: $TABLE (expected: invoices|documents)" >&2
+      exit 2
+    fi
+    exec "$PY" "$ENTRY" report "$TABLE"
+    ;;
+  doctor)
+    shift || true
+    exec "$PY" "$DOCTOR_ENTRY" "$@"
+    ;;
+  *)
+    echo "❌ unknown command: $COMMAND" >&2
+    show_help
+    exit 2
+    ;;
+esac

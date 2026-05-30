@@ -1,0 +1,12 @@
+{
+  "invoice_number": "INV-2026-0001",
+  "invoice_date": "2026-05-30",
+  "buyer_name": "Acme Manufacturing Co., Ltd.",
+  "seller_name": "Northwind Industrial Supply",
+  "item_name": "Industrial Sensor Kit",
+  "amount_net": 1000.0,
+  "tax_amount": 130.0,
+  "total_amount": 1130.0,
+  "file_path": "/data/invoices/INV-2026-0001.pdf",
+  "raw_text": "Invoice Number: INV-2026-0001\nBuyer: Acme Manufacturing Co., Ltd.\nSeller: Northwind Industrial Supply\nItem: Industrial Sensor Kit\nNet: 1000.00\nTax: 130.00\nTotal: 1130.00"
+}

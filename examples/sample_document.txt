@@ -1,0 +1,4 @@
+Supplier Risk Review
+Company: Acme Manufacturing Co., Ltd.
+Category: risk-review
+Summary: Logistics exposure is stable. One supplier has elevated quality variance. Mitigation includes dual-sourcing and weekly QA review.

@@ -1,0 +1,6 @@
+requests==2.33.0
+chromadb==1.5.9
+python-docx==1.2.0
+openpyxl==3.1.5
+pdf-inspector==0.1.1
+httpx==0.28.1
