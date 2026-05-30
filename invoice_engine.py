@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 import sys, os, json
 
-# 统一使用 hermes_core 的 D1 session（含指数退避重试）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hermes_core import query_d1
+from core_engine import HermesProjectCore
 
-class FinanceEngine:
-    def query_d1(self, sql, params=None):
-        return query_d1(sql, params)
+
+class FinanceEngine(HermesProjectCore):
+    """Invoice engine — inherits D1/Chroma/archive from HermesProjectCore."""
 
     def insert_confirmed_data(self, data):
         """写入经模型确认后的数据"""
-        sql = """INSERT INTO invoices (invoice_number, invoice_date, buyer_name, seller_name, item_name, amount_net, tax_amount, total_amount, file_path) 
+        sql = """INSERT INTO invoices (invoice_number, invoice_date, buyer_name, seller_name, item_name, amount_net, tax_amount, total_amount, file_path)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(invoice_number) DO UPDATE SET 
                    buyer_name=excluded.buyer_name, 
@@ -28,20 +27,26 @@ class FinanceEngine:
         ]
         res = self.query_d1(sql, params)
         if res.get("success"):
-            print(f"✅ 模型确认数据已同步 D1: {data.get('invoice_number')} | {data.get('buyer_name')} | ¥{data.get('total_amount')}")
+            metadata = {k: v for k, v in data.items()
+                        if k != 'raw_text' and isinstance(v, (str, int, float, bool))}
+            self.sync_to_chroma("invoices", data.get('invoice_number', ''),
+                                data.get('raw_text', ''), metadata)
+            print(f"✅ 模型确认数据已同步 D1+Chroma: {data.get('invoice_number')} | {data.get('buyer_name')} | ¥{data.get('total_amount')}")
         else:
             print(f"❌ 写入失败: {res.get('errors')}")
 
     def report(self):
-        res = self.query_d1("SELECT buyer_name, COUNT(*) as cnt, SUM(total_amount) as total FROM invoices GROUP BY buyer_name ORDER BY total DESC")
+        res = self.query_d1(
+            "SELECT buyer_name, COUNT(*) as cnt, SUM(total_amount) as total "
+            "FROM invoices GROUP BY buyer_name ORDER BY total DESC"
+        )
         if not res.get("success"):
             print(f"❌ 查询失败: {res.get('errors')}")
             return
         print("#### 🏢 财务审计报表 (模型验证版)")
-        print("| 购买方公司 | 发票张数 | 累计金额 |")
-        print("|---|---|---|")
-        for b in res["result"][0]["results"]:
-            print(f"| {b['buyer_name']} | {b['cnt']} | ¥{b['total']:.2f} |")
+        rows = res.get("result", [{}])[0].get("results", [])
+        for b in rows:
+            print(f"  {b['buyer_name']}  {b['cnt']} 张  ¥{b['total']:.2f}")
 
 if __name__ == "__main__":
     engine = FinanceEngine()

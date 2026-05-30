@@ -6,17 +6,15 @@ import sys, os, re, json, shutil, hashlib
 from pathlib import Path
 from datetime import datetime
 
-# 统一使用 hermes_core 的 D1 session（含重试机制）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hermes_core import query_d1 as _query_d1, get_config, get_project_root
+from core_engine import HermesProjectCore
 
 
-class DocumentEngine:
+class DocumentEngine(HermesProjectCore):
+    """Document engine — inherits D1/Chroma/archive from HermesProjectCore."""
+
     def __init__(self):
-        self.config = get_config()
-        self.project_root = get_project_root()
-        self.chroma_host = self.config.get("CHROMA_HOST", "localhost")
-        self.chroma_port = int(self.config.get("CHROMA_PORT", "8000"))
+        super().__init__()
         self.archive_dir = Path(
             self.config.get(
                 "HERMES_PROJECT_DOCUMENT_ARCHIVE_DIR",
@@ -91,26 +89,6 @@ class DocumentEngine:
                     chunks.append(' | '.join(['---'] * len(cells)))
         return '\n'.join(chunks)
 
-    # ── D1 / Chroma ─────────────────────────────────────────────
-    def query_d1(self, sql, params=None):
-        return _query_d1(sql, params)
-
-    def sync_to_chroma(self, title: str, content: str, metadata: dict):
-        """将文档内容写入 ChromaDB (HttpClient, v2 API)"""
-        if not content:
-            return
-        try:
-            import chromadb
-            client = chromadb.HttpClient(host=self.chroma_host, port=self.chroma_port)
-            col = client.get_or_create_collection(name="documents")
-            col.upsert(
-                ids=[str(title)],
-                documents=[str(content)],
-                metadatas=[metadata]
-            )
-        except Exception as e:
-            print(f"⚠️ [ChromaDB] 文档向量化失败: {e}")
-
     # ── 主流程 ───────────────────────────────────────────────────
     def process(self, path: str, analysis_json: dict):
         """
@@ -160,7 +138,7 @@ class DocumentEngine:
             # 4. Chroma 向量化
             metadata = {k: v for k, v in analysis_json.items()
                         if k != 'raw_text' and isinstance(v, (str, int, float, bool))}
-            self.sync_to_chroma(analysis_json.get('title', new_name), raw_text, metadata)
+            self.sync_to_chroma("documents", analysis_json.get('title', new_name), raw_text, metadata)
             print(f"✅ 文档已归档并同步 D1+Chroma: {new_name}")
             return dest_path
         else:
