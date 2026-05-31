@@ -23,6 +23,16 @@ reuters_latest.md
 bloomberg_latest.md
 bloomberg_rss_latest.md
 
+# Meeting recordings and transcripts
+meeting/recordings/
+meeting/transcripts/
+meeting/summaries/
+meeting/schedule.json
+
+# Scratch / temp files
+tmp/
+tmp/*
+
 # Local-only publishing / monitoring artifacts
 GITHUB_PUBLISHING_CHECKLIST.md
 docs/fenchuan-monitoring.md

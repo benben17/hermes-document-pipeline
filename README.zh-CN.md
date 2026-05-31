@@ -78,6 +78,7 @@ Operator / CLI / Hermes
 - **发票入库** — 接收 JSON 载荷，UPSERT 到 Cloudflare D1，同步发票文本到 ChromaDB
 - **文档处理** — 支持 PDF / DOCX / TXT / MD / LOG / CSV / XLSX / XLS 文本提取，本地 MD5 去重归档，元数据写入 D1，文本索引写入 ChromaDB
 - **健康检查** — 校验 Python 运行时、依赖、D1、ChromaDB 与 CLI 入口；导出 JSON / Markdown 报告；`doctor --fix` 自动修复常见漂移
+- **腾讯会议自动机器人** — Headless QR 扫码登录、定时入会、本地录音、分段转写 + AI 摘要、结果推送到 Telegram
 
 ## 快速开始
 

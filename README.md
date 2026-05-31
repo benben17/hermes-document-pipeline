@@ -63,6 +63,10 @@ Operator / CLI / Hermes
 │   ├── invoice.sample.json     # Sample invoice payload for smoke test
 │   ├── document.sample.json    # Sample document analysis payload
 │   └── sample_document.txt     # Sample document file
+├── meeting/
+│   ├── meeting_bot.py          # Meeting automation: QR login, auto-join, record, transcribe, summarize
+│   ├── recordings/             # Audio recordings (chunked WAV, gitignored)
+│   └── transcripts/            # Transcription outputs (gitignored)
 ├── project-tool                # Shell entrypoint (calls project_manager.py / project_doctor.py)
 ├── requirements.txt
 ├── hermes_core.py              # Config + D1 HTTP session
@@ -79,6 +83,7 @@ Operator / CLI / Hermes
 - **Invoice ingestion** — Accept JSON payloads, upsert to Cloudflare D1, sync invoice text to ChromaDB
 - **Document ingestion** — Extract text from PDF / DOCX / TXT / MD / LOG / CSV / XLSX / XLS, archive locally with MD5 dedup, upsert metadata to D1, index text to ChromaDB
 - **Health checks** — Verify Python runtime, imports, D1, ChromaDB, and CLI entrypoints; export JSON + Markdown reports; auto-fix common drift with `doctor --fix`
+- **Meeting automation (Tencent Meeting)** — Headless QR login, auto-join scheduled meetings, audio capture, chunked transcription + AI summary, push results back via Telegram
 
 ## Quick start
 
