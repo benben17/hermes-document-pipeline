@@ -45,6 +45,12 @@ bloomberg_rss_fetch.py
 # Local project metadata / generated artifacts
 .project-root
 *.html
+*.png
+*方案*.md
+方案*.md
+技术方案.md
+沉香产品价格表.md
+meeting/*.log
 
 # Editors / OS
 .DS_Store
