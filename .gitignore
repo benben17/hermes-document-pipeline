@@ -35,12 +35,19 @@ tmp/*
 
 # Local-only publishing / monitoring artifacts
 GITHUB_PUBLISHING_CHECKLIST.md
+
 docs/fenchuan-monitoring.md
+
+# Local news push scripts/artifacts
+translate.py
 news_sources.py
 reuters_fetcher.py
 reuters_push.py
 bloomberg_fetch_and_notify.py
 bloomberg_rss_fetch.py
+reuters_latest.md
+bloomberg_latest.md
+bloomberg_rss_latest.md
 
 # Local project metadata / generated artifacts
 .project-root
