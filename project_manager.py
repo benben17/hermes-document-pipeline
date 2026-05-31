@@ -45,6 +45,8 @@ def show_help(exit_code: int = 0):
     print("Usage:")
     print("  project_manager.py invoice                — process invoice JSON from stdin")
     print("  project_manager.py doc                    — process document JSON from stdin")
+    print("  project_manager.py doc_summarize <file>   — get summary anchor (JSON)")
+    print("  project_manager.py doc_search <query>     — global search D1 + ChromaDB (JSON)")
     print("  project_manager.py report [invoices|documents]")
     sys.exit(exit_code)
 
@@ -89,6 +91,18 @@ if __name__ == "__main__":
         data = load_json_stdin()
         file_path = data.pop("file_path_src", data.get("file_path", ""))
         DocumentEngine().process(file_path, data)
+
+    elif cmd == "doc_summarize":
+        # 获取文档摘要锚点（不读取全文入上下文）
+        if len(sys.argv) < 3:
+            sys.exit(1)
+        print(json.dumps(DocumentEngine().get_summary_anchor(sys.argv[2]), ensure_ascii=False))
+
+    elif cmd == "doc_search":
+        # 全域检索：D1 元数据 + ChromaDB 语义
+        if len(sys.argv) < 3:
+            sys.exit(1)
+        print(json.dumps(DocumentEngine().search_all(sys.argv[2]), ensure_ascii=False))
 
     elif cmd == "process":
         # 自动识别文档类型（发票 / 普通文档），路由到对应引擎

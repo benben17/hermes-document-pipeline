@@ -13,6 +13,8 @@ Usage:
 Commands:
   invoice [file.json|-]   Process invoice JSON from file or stdin
   doc     [file.json|-]   Process document JSON from file or stdin
+  summarize [file]        Get quick summary anchor (JSON)
+  search [query]          Global search D1 + ChromaDB (JSON)
   report  [table]         Generate report for invoices|documents (default: documents)
   doctor  [--json|--no-qq-send|--fix|--bootstrap]  Health check, report export, and auto-repair for project runtime/integrations
   help                    Show this help
@@ -38,6 +40,12 @@ case "$COMMAND" in
   help|-h|--help)
     show_help
     exit 0
+    ;;
+  summarize)
+    exec "$PY" "$ENTRY" doc_summarize "$ARG"
+    ;;
+  search)
+    exec "$PY" "$ENTRY" doc_search "$ARG"
     ;;
   invoice|doc)
     if [[ "$ARG" == "-h" || "$ARG" == "--help" ]]; then

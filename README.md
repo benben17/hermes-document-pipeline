@@ -300,3 +300,14 @@ The repository already ignores: `.venv/`, `venv/`, `archive/`, `doctor-reports/`
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
+
+## Document Retrieval Protocol (`docs/DOC_RETRIEVAL_PROTOCOL.md`)
+
+This project enforces a strict document retrieval protocol for all Agent-facing document queries. The protocol defines:
+
+- **Intent Triage** (auto-trigger when user references documents by company, contract, invoice, project, or project file)
+- **Search Escalation** (step order): D1 metadata → ChromaDB semantic chunks → doc_summarize → targeted file inspection
+- **Evidence Standard** (mandatory citation: `[来源: <title> (id:<id>)]`)
+- **Retrieval Hard Rules** (no full-document reads before search, cite sources, no web-first answers)
+
+See `docs/DOC_RETRIEVAL_PROTOCOL.md` for the full contract.
