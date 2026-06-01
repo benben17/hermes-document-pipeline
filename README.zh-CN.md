@@ -1,84 +1,26 @@
 # Hermes Document Pipeline
 
-面向生产环境的文档与发票处理流水线：统一 CLI、健康检查、结构化入库与语义检索。
+面向生产环境的文档与发票处理流水线：统一 CLI、健康检查、结构化入库、语义检索，以及公开仓库安全发布。
 
 [English Version](./README.md)
 
 ## 这个项目做什么
 
-Hermes Agent 适合做编排，但业务流程需要独立、稳定、可交接的运行时和工具层。本仓库将这层能力整理成一个小型 Python 项目，提供统一入口 `./project-tool`。
+Hermes Agent 适合做编排，但业务流程需要独立、稳定、可交接的运行时和工具层。本仓库将这层能力整理为一个小型 Python 项目，并提供统一入口 `./project-tool`。
 
-一个新用户可以：
-
+新用户可以按以下步骤快速完成到可用状态：
 1. Clone 仓库
 2. 创建 venv
 3. 填好 `.env`
-4. 跑几条命令，完成安装与基础验证
+4. 执行基础验证
+5. 获得可用的发票和文档处理流水线
 
-## 架构
+## 核心能力
 
-```
-Operator / CLI / Hermes
-        │
-        ▼
-   ./project-tool
-        │
-        ├── project_manager.py   ──→  发票 / 文档处理（薄路由层）
-        └── project_doctor.py    ──→  健康检查 / 报告
-                │
-                ├── FinanceEngine   (invoice_engine.py)   ─→  D1 + ChromaDB
-                ├── DocumentEngine  (doc_engine.py)        ─→  D1 + ChromaDB
-                └── HermesProjectCore (core_engine.py)    ─→  共享 D1 / Chroma / 归档
-                        │
-                        ├── Cloudflare D1   （结构化数据）
-                        ├── ChromaDB        （语义检索）
-                        └── 本地 archive     （文档 / 报告 / 输出）
-```
-
-### 模块职责
-
-| 文件 | 职责 |
-|---|---|
-| `hermes_core.py` | 配置加载（环境变量 → .env → 默认值），带自动重试的 D1 HTTP session |
-| `core_engine.py` | `HermesProjectCore` 基类 — `query_d1` / `sync_to_chroma` / `archive_file` / `get_md5` |
-| `invoice_engine.py` | `FinanceEngine(HermesProjectCore)` — 发票 upsert + 按购买方统计报表 |
-| `doc_engine.py` | `DocumentEngine(HermesProjectCore)` — 多格式文本提取、归档、D1 upsert、ChromaDB 索引 |
-| `project_manager.py` | 顶层 CLI 路由器 — 不含业务逻辑，只做子命令到引擎的分发 |
-| `project_doctor.py` | 健康检查 — 验证运行时、依赖、D1、ChromaDB、入口脚本；导出 JSON/MD 报告 |
-
-## 仓库结构
-
-```
-.
-├── .github/
-│   └── workflows/
-│       └── bootstrap.yml       # CI：验证 clone → venv → doctor --bootstrap 流程
-├── .env.example                # 配置模板（不含真实密钥）
-├── .gitignore
-├── README.md
-├── README.zh-CN.md
-├── examples/
-│   ├── README.md
-│   ├── invoice.sample.json     # 发票处理示例载荷
-│   ├── document.sample.json    # 文档分析示例载荷
-│   └── sample_document.txt     # 示例文档文件
-├── project-tool                # Shell 入口（调用 project_manager.py / project_doctor.py）
-├── requirements.txt
-├── hermes_core.py              # 配置 + D1 HTTP session
-├── core_engine.py              # HermesProjectCore 基类
-├── invoice_engine.py           # FinanceEngine
-├── doc_engine.py               # DocumentEngine
-├── project_manager.py          # CLI 路由
-├── project_doctor.py           # 健康检查
-└── pdf_engine.py               # PDF 辅助工具（由 doc_engine 调用）
-```
-
-## 核心功能
-
-- **发票入库** — 接收 JSON 载荷，UPSERT 到 Cloudflare D1，同步发票文本到 ChromaDB
-- **文档处理** — 支持 PDF / DOCX / TXT / MD / LOG / CSV / XLSX / XLS 文本提取，本地 MD5 去重归档，元数据写入 D1，文本索引写入 ChromaDB
-- **健康检查** — 校验 Python 运行时、依赖、D1、ChromaDB 与 CLI 入口；导出 JSON / Markdown 报告；`doctor --fix` 自动修复常见漂移
-- **腾讯会议自动机器人** — Headless QR 扫码登录、定时入会、本地录音、分段转写 + AI 摘要、结果推送到 Telegram
+- 发票入库：接收 JSON 载荷，UPSERT 到 Cloudflare D1，并同步发票文本到 ChromaDB 以便语义检索。
+- 文档处理：支持 PDF / DOCX / TXT / MD / LOG / CSV / XLSX / XLS 文本提取，本地 MD5 去重归档，元数据写入 D1，检索向量写入 ChromaDB。
+- 健康检查：校验 Python 运行时、依赖、D1、ChromaDB 与 CLI 入口；导出 JSON / Markdown 报告；`doctor --fix` 可自动修复常见漂移。
+- 腾讯会议自动机器人：Headless 二维码登录、定时入会、本地录音、分段转写加 AI 摘要、结果推送到 Telegram。
 
 ## 快速开始
 
@@ -97,24 +39,23 @@ python3 -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3）配置环境变量
+### 3）配置环境
 
 ```bash
 cp .env.example .env
 ```
 
-至少填写以下字段：
-
+必填：
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_FINANCE_D1_DATABASE_ID`
 - `CHROMA_HOST`
 - `CHROMA_PORT`
 
-可选（用于 Hermes 探针投递）：
+可选：
 - `HERMES_NEWS_TARGET`
 
-### 4）验证 CLI 正常
+### 4）验证 CLI
 
 ```bash
 ./project-tool --help
@@ -158,31 +99,33 @@ echo '{"title": "合同", "company": "XX公司", "file_path_src": "/tmp/a.pdf"}'
 ### `invoice` 命令
 
 | 字段 | 必填 | 说明 |
-|---|---|---|
-| `invoice_number` | ✅ | 发票号（主键） |
-| `invoice_date` | — | 开票日期（yyyy-mm-dd） |
-| `buyer_name` | — | 购买方 |
-| `seller_name` | — | 销售方 |
-| `item_name` | — | 商品 / 服务名称 |
-| `amount_net` | — | 不含税金额 |
-| `tax_amount` | — | 税额 |
-| `total_amount` | — | 价税合计 |
-| `file_path` | — | 原始文件路径（默认 `manual_entry`） |
-| `raw_text` | — | 发票 OCR 全文，用于 ChromaDB 索引 |
+|------|------|------|
+| `invoice_number` | 是 | 发票号（主键） |
+| `invoice_date` | 否 | 开票日期（yyyy-mm-dd） |
+| `buyer_name` | 否 | 购买方 |
+| `seller_name` | 否 | 销售方 |
+| `item_name` | 否 | 商品或服务名称 |
+| `amount_net` | 否 | 不含税金额 |
+| `tax_amount` | 否 | 税额 |
+| `total_amount` | 否 | 价税合计 |
+| `file_path` | 否 | 原始文件路径（默认 `manual_entry`） |
+| `raw_text` | 否 | 发票提取全文，用于语义检索索引 |
 
 ### `doc` 命令
 
 | 字段 | 必填 | 说明 |
-|---|---|---|
-| `file_path_src` | ✅ | 源文件绝对路径 |
-| `title` | ✅ | 文档标题（作为 ChromaDB 唯一 ID） |
-| `company` | — | 所属公司 / 机构 |
-| `category` | — | 文档类型（合同 / 报告 / 协议等） |
-| `summary` | — | 内容摘要 |
-| `tags` | — | 逗号分隔的标签 |
-| `raw_text` | — | 已提取文本，提供后跳过重新提取 |
+|------|------|------|
+| `file_path_src` | 是 | 源文件绝对路径 |
+| `title` | 是 | 文档标题（用作 ChromaDB 唯一 ID） |
+| `company` | 否 | 所属公司或机构 |
+| `category` | 否 | 文档类型（合同、报告、协议等） |
+| `summary` | 否 | 内容摘要 |
+| `tags` | 否 | 逗号分隔的标签 |
+| `raw_text` | 否 | 已提取文本，提供后跳过重新提取 |
 
 ## D1 表结构
+
+需在 Cloudflare D1 中提前建立的表：
 
 ```sql
 CREATE TABLE invoices (
@@ -222,7 +165,7 @@ CREATE TABLE documents (
 关键变量：
 
 | 变量 | 默认值 | 说明 |
-|---|---|---|
+|------|--------|------|
 | `PROJECT_ROOT` | 脚本所在目录 | 项目根目录 |
 | `HERMES_HOME` | `~/.hermes` | Hermes 配置目录 |
 | `CLOUDFLARE_API_TOKEN` | — | **必填**，D1 鉴权 |
@@ -238,43 +181,52 @@ CREATE TABLE documents (
 ## `doctor` 检查项
 
 | 检查 | 触发条件 |
-|---|---|
+|------|----------|
 | `.venv` 存在 | 始终 |
 | 必需 Python 依赖可 import | 始终 |
 | 入口脚本完整性 | 始终 |
-| D1 连通性 + schema | `--json` / 默认模式 |
-| ChromaDB 连通性 + 集合 | `--json` / 默认模式 |
-| Firecrawl key + 搜索探针 | `--json` / 默认模式 |
-| Hermes 投递目标可用性 | `--json` / 默认模式 |
+| D1 连通性 + schema | `--json` 或默认模式 |
+| ChromaDB 连通性 + 集合 | `--json` 或默认模式 |
+| Firecrawl key + 搜索探针 | `--json` 或默认模式 |
+| Hermes 投递目标可用性 | `--json` 或默认模式 |
 
 报告写入 `doctor-reports/`，格式为 `.json` 和 `.md`。
 
 ## 公开仓库安全规范
 
-本仓库按"可公开"标准整理，推送前请确认：
-
-- `.env` 不进入 git（已在 `.gitignore`）
-- 运行期产物不进入 git（`archive/`、`doctor-reports/` 已忽略）
+本仓库按“可公开”标准整理，推送前请确认：
+- `.env` 不进入 git
+- 运行期产物不进入 git（`archive/`、`doctor-reports/` 已在忽略列表中）
 - 不提交真实 bot ID、token、chat ID 或私人路径
 - 配置展示统一使用 `.env.example`
 
 ## CI
 
 `.github/workflows/bootstrap.yml` 在每次推送时验证文档中的 bootstrap 流程：
-
 1. 创建 `.venv`
 2. 安装 `requirements.txt`
-3. 复制 `.env.example` → `.env`
+3. 复制 `.env.example` -> `.env`
 4. `./project-tool --help`
 5. `./project-tool doctor --bootstrap --json`
-6. `python -m py_compile *.py`
+6. `python3 -m py_compile *.py`
 
 ## 已知前提
 
 - D1 数据库需提前建表（DDL 见上方）
 - ChromaDB 需支持 HTTP 访问
-- 需要安装 Hermes CLI 才能使用投递检查功能
+- 需要 Hermes CLI 才能使用投递检查功能
 - 首次安装推荐先执行 `doctor --bootstrap --json`
+
+## 文档检索协议
+
+本仓库执行严格的文档检索协议：
+- 优先从 D1 元数据检索
+- 其次做 ChromaDB 语义检索
+- 然后使用 `doc_summarize`
+- 必要时才做目标文件检查
+- 所有返回需带来源引用：`[来源: <title> (id:<id>)]`。
+
+按检索规则来，禁止未检索就全文读入，禁止只给网页搜索结果。
 
 ## License
 

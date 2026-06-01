@@ -1,89 +1,26 @@
 # Hermes Document Pipeline
 
-A production-ready CLI pipeline for document and invoice ingestion, health checks, and semantic retrieval.
+A production-ready CLI pipeline for document and invoice ingestion, health checks, and semantic retrieval. Designed for repeatable onboarding, clear contracts, and safe public publishing.
 
 [中文文档](./README.zh-CN.md)
 
 ## Why this project exists
 
-Hermes Agent excels at orchestration, but business workflows need their own stable runtime and repeatable tooling. This repository packages that layer as a focused Python project with a unified shell entrypoint `./project-tool`.
+Hermes Agent handles orchestration well. Business workflows still need an independent, stable runtime and tooling this repository provides through a unified entrypoint: `./project-tool`.
 
-A new user can:
+A new user can go from clone to verified pipeline in minutes:
+1. Clone the repo.
+2. Create a virtualenv.
+3. Fill in a `.env`.
+4. Run one or two verification commands.
+5. Have a working invoice and document pipeline with health checks.
 
-1. Clone the repo
-2. Create a virtualenv
-3. Fill in a `.env`
-4. Run one or two commands
-5. Have a working invoice/document pipeline with health checks
+## What it does
 
-## Architecture
-
-```
-Operator / CLI / Hermes
-        │
-        ▼
-   ./project-tool
-        │
-        ├── project_manager.py   ──→  invoice / document ingestion (thin router)
-        └── project_doctor.py    ──→  health checks / reports
-                │
-                ├── FinanceEngine   (invoice_engine.py)  ─→  D1 + ChromaDB
-                ├── DocumentEngine  (doc_engine.py)       ─→  D1 + ChromaDB
-                └── HermesProjectCore (core_engine.py)   ─→  shared D1 / Chroma / archive
-                        │
-                        ├── Cloudflare D1   (structured records)
-                        ├── ChromaDB        (semantic retrieval)
-                        └── local archive   (documents / reports / outputs)
-```
-
-### Module responsibilities
-
-| File | Role |
-|---|---|
-| `hermes_core.py` | Config loading (env → .env → defaults), D1 HTTP session with retry |
-| `core_engine.py` | `HermesProjectCore` base class — `query_d1`, `sync_to_chroma`, `archive_file`, `get_md5` |
-| `invoice_engine.py` | `FinanceEngine(HermesProjectCore)` — invoice upsert + per-buyer report |
-| `doc_engine.py` | `DocumentEngine(HermesProjectCore)` — multi-format text extraction, archive, D1 upsert, ChromaDB index |
-| `project_manager.py` | Top-level CLI router — no business logic, just routes subcommands to engines |
-| `project_doctor.py` | Health checker — verifies runtime, imports, D1, ChromaDB, entrypoints; exports JSON/MD reports |
-
-## Repository layout
-
-```
-.
-├── .github/
-│   └── workflows/
-│       └── bootstrap.yml       # CI: validates clone → venv → doctor --bootstrap
-├── .env.example                # Config template (no secrets)
-├── .gitignore
-├── README.md
-├── README.zh-CN.md
-├── examples/
-│   ├── README.md
-│   ├── invoice.sample.json     # Sample invoice payload for smoke test
-│   ├── document.sample.json    # Sample document analysis payload
-│   └── sample_document.txt     # Sample document file
-├── meeting/
-│   ├── meeting_bot.py          # Meeting automation: QR login, auto-join, record, transcribe, summarize
-│   ├── recordings/             # Audio recordings (chunked WAV, gitignored)
-│   └── transcripts/            # Transcription outputs (gitignored)
-├── project-tool                # Shell entrypoint (calls project_manager.py / project_doctor.py)
-├── requirements.txt
-├── hermes_core.py              # Config + D1 HTTP session
-├── core_engine.py              # HermesProjectCore base class
-├── invoice_engine.py           # FinanceEngine
-├── doc_engine.py               # DocumentEngine
-├── project_manager.py          # CLI router
-├── project_doctor.py           # Health checker
-└── pdf_engine.py               # PDF helpers (used by doc_engine)
-```
-
-## Core capabilities
-
-- **Invoice ingestion** — Accept JSON payloads, upsert to Cloudflare D1, sync invoice text to ChromaDB
-- **Document ingestion** — Extract text from PDF / DOCX / TXT / MD / LOG / CSV / XLSX / XLS, archive locally with MD5 dedup, upsert metadata to D1, index text to ChromaDB
-- **Health checks** — Verify Python runtime, imports, D1, ChromaDB, and CLI entrypoints; export JSON + Markdown reports; auto-fix common drift with `doctor --fix`
-- **Meeting automation (Tencent Meeting)** — Headless QR login, auto-join scheduled meetings, audio capture, chunked transcription + AI summary, push results back via Telegram
+- Invoice ingestion — accept JSON payloads, upsert to Cloudflare D1, and sync invoice text into ChromaDB for retrieval.
+- Document ingestion — extract text from PDF / DOCX / TXT / MD / LOG / CSV / XLSX / XLS, archive with MD5 dedup, record metadata to D1, and index content into ChromaDB.
+- Health checks — verify Python runtime, imports, D1, ChromaDB, and CLI integrity; export JSON and Markdown reports; auto-fix common drift with `doctor --fix`.
+- Meeting automation (Tencent Meeting) — headless QR login, auto-join meetings, record audio, chunked transcription plus AI summary, and push results via Telegram.
 
 ## Quick start
 
@@ -108,15 +45,14 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill in at minimum:
-
+Minimum required:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_FINANCE_D1_DATABASE_ID`
 - `CHROMA_HOST`
 - `CHROMA_PORT`
 
-Optional (for Hermes delivery probes):
+Optional:
 - `HERMES_NEWS_TARGET`
 
 ### 4) Verify the CLI
@@ -131,9 +67,9 @@ Optional (for Hermes delivery probes):
 ./project-tool doctor --bootstrap --json
 ```
 
-Verifies the local Python runtime, dependencies, and CLI entrypoints without requiring D1 or ChromaDB to be configured.
+Checks local runtime, dependencies, and entrypoints without D1 or ChromaDB.
 
-### 6) Full integration check (after D1 + ChromaDB are ready)
+### 6) Full integration check (after D1 and ChromaDB are ready)
 
 ```bash
 ./project-tool doctor --no-qq-send
@@ -162,38 +98,34 @@ echo '{"title": "Contract", "company": "Acme", "file_path_src": "/tmp/a.pdf"}' |
 
 ### `invoice` command
 
-JSON keys:
-
 | Key | Required | Description |
 |---|---|---|
-| `invoice_number` | ✅ | Unique invoice ID (primary key) |
-| `invoice_date` | — | Issue date (yyyy-mm-dd) |
-| `buyer_name` | — | Buyer |
-| `seller_name` | — | Seller |
-| `item_name` | — | Goods / service description |
-| `amount_net` | — | Pre-tax amount |
-| `tax_amount` | — | Tax amount |
-| `total_amount` | — | Total (tax-inclusive) |
-| `file_path` | — | Source file path (default: `manual_entry`) |
-| `raw_text` | — | Full OCR text, used for ChromaDB indexing |
+| `invoice_number` | Yes | Unique invoice ID (primary key) |
+| `invoice_date` | No | Issue date (yyyy-mm-dd) |
+| `buyer_name` | No | Buyer |
+| `seller_name` | No | Seller |
+| `item_name` | No | Goods or service description |
+| `amount_net` | No | Pre-tax amount |
+| `tax_amount` | No | Tax amount |
+| `total_amount` | No | Total (tax inclusive) |
+| `file_path` | No | Source file path (default: `manual_entry`) |
+| `raw_text` | No | Full extracted text, used for semantic indexing |
 
 ### `doc` command
 
-JSON keys:
-
 | Key | Required | Description |
 |---|---|---|
-| `file_path_src` | ✅ | Source file absolute path |
-| `title` | ✅ | Document title (used as ChromaDB ID) |
-| `company` | — | Company / organization |
-| `category` | — | Document type (contract / report / etc.) |
-| `summary` | — | Content summary |
-| `tags` | — | Comma-separated tags |
-| `raw_text` | — | Pre-extracted text (skips re-extraction if provided) |
+| `file_path_src` | Yes | Source file absolute path |
+| `title` | Yes | Document title (used as ChromaDB ID) |
+| `company` | No | Company or organization |
+| `category` | No | Document type (contract, report, etc.) |
+| `summary` | No | Content summary |
+| `tags` | No | Comma-separated tags |
+| `raw_text` | No | Pre-extracted text (skips re-extraction if provided) |
 
 ## D1 schema
 
-The pipeline expects two tables in your Cloudflare D1 database:
+Expected tables in your Cloudflare D1 database:
 
 ```sql
 CREATE TABLE invoices (
@@ -264,23 +196,22 @@ Reports are written to `doctor-reports/` as `.json` and `.md`.
 
 ## Public repo safety
 
-This repository is designed to be publishable without leaking secrets.
+This repository is publishable without leaking secrets.
 
 Before pushing:
-- Never commit `.env` (already in `.gitignore`)
-- Never commit runtime outputs (`archive/`, `doctor-reports/`)
-- Never commit real bot IDs, tokens, chat IDs, or personal paths
-- Use `.env.example` for config documentation
+- never commit `.env` or `.env.local`
+- never commit bot IDs, tokens, chat IDs, or personal paths
+- use `.env.example` for configuration documentation
+- treat `archive/` and `doctor-reports/` as runtime output only
 
-The repository already ignores: `.venv/`, `venv/`, `archive/`, `doctor-reports/`, generated markdown outputs, and local env files.
+The repository ignores runtime artifacts by default.
 
 ## CI
 
 `.github/workflows/bootstrap.yml` validates the documented bootstrap flow on every push:
-
-1. Create `.venv`
-2. Install `requirements.txt`
-3. Copy `.env.example` → `.env`
+1. create `.venv`
+2. install `requirements.txt`
+3. copy `.env.example` -> `.env`
 4. `./project-tool --help`
 5. `./project-tool doctor --bootstrap --json`
 6. `python -m py_compile *.py`
@@ -289,8 +220,19 @@ The repository already ignores: `.venv/`, `venv/`, `archive/`, `doctor-reports/`
 
 - D1 database must have `invoices` and `documents` tables (DDL above)
 - ChromaDB must be reachable over HTTP
-- Hermes CLI must be installed if you want delivery checks (`--no-qq-send` flag)
+- Hermes CLI should be installed for delivery checks (`--no-qq-send`)
 - `doctor --bootstrap --json` is the recommended first-install validation
+
+## Document retrieval protocol
+
+This repository follows a strict document retrieval protocol for agent-facing queries. The workflow is:
+- D1 metadata first
+- ChromaDB semantic chunk search next
+- `doc_summarize` after targeted search
+- targeted file inspection only when needed
+- required source citations in the form `[Source: <title> (id:<id>)]`
+
+Use search before reading full documents. Do not return web-only answers when the answer exists in stored documents.
 
 ## License
 
@@ -300,14 +242,3 @@ The repository already ignores: `.venv/`, `venv/`, `archive/`, `doctor-reports/`
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
-
-## Document Retrieval Protocol (`docs/DOC_RETRIEVAL_PROTOCOL.md`)
-
-This project enforces a strict document retrieval protocol for all Agent-facing document queries. The protocol defines:
-
-- **Intent Triage** (auto-trigger when user references documents by company, contract, invoice, project, or project file)
-- **Search Escalation** (step order): D1 metadata → ChromaDB semantic chunks → doc_summarize → targeted file inspection
-- **Evidence Standard** (mandatory citation: `[来源: <title> (id:<id>)]`)
-- **Retrieval Hard Rules** (no full-document reads before search, cite sources, no web-first answers)
-
-See `docs/DOC_RETRIEVAL_PROTOCOL.md` for the full contract.
