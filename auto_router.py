@@ -261,7 +261,7 @@ def infer_doc_meta(text: str, file_path: str) -> dict:
     cat_map = [
         (["发票", "增值税", "纳税人识别号", "税号", "价税合计", "w-8", "w-9", "irs tax", "tax withholding"], "税务文件"),
         (["合同", "协议", "agreement", "contract"], "合同协议"),
-        (["方案", "proposal", "solution"], "技术方案"),
+    
         (["简历", "resume", "cv"], "简历"),
         (["招标", "投标", "tender", "bid"], "招投标"),
         (["财务", "finance", "账单", "账务"], "财务文件"),
